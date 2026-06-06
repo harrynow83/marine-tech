@@ -67,6 +67,32 @@ export const SEED_EQUIPMENT: Equipment[] = [
       "Are cooling fans running when under load?",
       "Is the charge current ramping correctly?",
     ]),
+    errorCodes: [
+      {
+        id: "ec-combimaster-1",
+        code: "Overtemperature",
+        explanation:
+          "Internal temperature too high — output is reduced or shut down. Improve ventilation, clean air inlets and reduce load until the unit cools.",
+      },
+      {
+        id: "ec-combimaster-2",
+        code: "DC input low",
+        explanation:
+          "Battery voltage below the inverter cut-off. Recharge the bank and check for voltage drop across cables, fuses and terminals.",
+      },
+      {
+        id: "ec-combimaster-3",
+        code: "Overload",
+        explanation:
+          "AC load exceeds the rated output. Switch off non-essential consumers and reset; if it persists, check for a shorted load.",
+      },
+      {
+        id: "ec-combimaster-4",
+        code: "MasterBus comm error",
+        explanation:
+          "No communication on the MasterBus/CAN network. Check terminators at both ends and re-seat the network cables.",
+      },
+    ],
   },
   {
     id: "eq-victron-quattro",
@@ -80,6 +106,32 @@ export const SEED_EQUIPMENT: Equipment[] = [
       "Is the transfer switch engaging on shore power?",
       "Is the output frequency stable at 50/60 Hz?",
     ]),
+    errorCodes: [
+      {
+        id: "ec-quattro-1",
+        code: "Err 3",
+        explanation:
+          "VE.Bus device has no or wrong firmware. Re-program the unit with the correct firmware using VE.Bus System Configurator.",
+      },
+      {
+        id: "ec-quattro-2",
+        code: "Err 11",
+        explanation:
+          "Installation error — AC ripple too high on the DC side. Check battery cable cross-section, length and terminal torque.",
+      },
+      {
+        id: "ec-quattro-3",
+        code: "Err 17",
+        explanation:
+          "Phase master overload / one unit took over as master. Verify VE.Bus cabling between units and even load sharing.",
+      },
+      {
+        id: "ec-quattro-4",
+        code: "Overload",
+        explanation:
+          "Connected load exceeds capacity. Reduce load and restart; inspect for a faulty or shorted consumer if it repeats.",
+      },
+    ],
   },
   {
     id: "eq-onan-marine-genset",
