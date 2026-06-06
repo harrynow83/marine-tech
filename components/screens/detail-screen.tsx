@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useStore } from "@/lib/store"
-import type { Equipment } from "@/lib/types"
+import type { Equipment, ErrorCode } from "@/lib/types"
 import { TopBar, categoryColor } from "@/components/ui-bits"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,6 +13,11 @@ import {
   FolderClosed,
   Pencil,
   Play,
+  Plus,
+  Save,
+  Trash2,
+  TriangleAlert,
+  X,
 } from "lucide-react"
 
 export function DetailScreen({
@@ -27,7 +32,7 @@ export function DetailScreen({
   onEdit: () => void
 }) {
   const { recordsForEquipment } = useStore()
-  const [tab, setTab] = useState<"checklist" | "records">("checklist")
+  const [tab, setTab] = useState<"checklist" | "errors" | "records">("checklist")
 
   if (!equipment) {
     return (
@@ -74,9 +79,12 @@ export function DetailScreen({
         </div>
       </div>
 
-      <div className="sticky top-[57px] z-10 mt-4 flex gap-1 border-b border-border bg-background/90 px-4 backdrop-blur">
+      <div className="sticky top-[57px] z-10 mt-4 flex gap-1 overflow-x-auto border-b border-border bg-background/90 px-4 backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <TabButton active={tab === "checklist"} onClick={() => setTab("checklist")} icon={<ClipboardList className="size-4" />}>
           Checklist
+        </TabButton>
+        <TabButton active={tab === "errors"} onClick={() => setTab("errors")} icon={<TriangleAlert className="size-4" />}>
+          Error codes {equipment.errorCodes && equipment.errorCodes.length > 0 ? `(${equipment.errorCodes.length})` : ""}
         </TabButton>
         <TabButton active={tab === "records"} onClick={() => setTab("records")} icon={<FolderClosed className="size-4" />}>
           Records {records.length > 0 ? `(${records.length})` : ""}
@@ -108,6 +116,8 @@ export function DetailScreen({
               Edit diagnostic steps
             </Button>
           </>
+        ) : tab === "errors" ? (
+          <ErrorCodesPanel equipment={equipment} />
         ) : (
           <RecordsList equipmentId={equipment.id} />
         )}
@@ -138,7 +148,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-1.5 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
+      className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
         active
           ? "border-primary text-primary"
           : "border-transparent text-muted-foreground hover:text-foreground"
@@ -243,4 +253,202 @@ function formatDate(iso: string) {
     hour: "2-digit",
     minute: "2-digit",
   })
+}
+
+let ecCounter = 0
+function newErrorCodeId() {
+  ecCounter += 1
+  return `ec-${Date.now()}-${ecCounter}`
+}
+
+function ErrorCodesPanel({ equipment }: { equipment: Equipment }) {
+  const { updateEquipment } = useStore()
+  const codes = equipment.errorCodes ?? []
+  const [editing, setEditing] = useState<ErrorCode | null>(null)
+  const [showForm, setShowForm] = useState(false)
+
+  function persist(next: ErrorCode[]) {
+    updateEquipment({ ...equipment, errorCodes: next })
+  }
+
+  function handleSave(entry: ErrorCode) {
+    const exists = codes.some((c) => c.id === entry.id)
+    persist(exists ? codes.map((c) => (c.id === entry.id ? entry : c)) : [...codes, entry])
+    setShowForm(false)
+    setEditing(null)
+  }
+
+  function handleDelete(id: string) {
+    persist(codes.filter((c) => c.id !== id))
+  }
+
+  if (showForm) {
+    return (
+      <ErrorCodeForm
+        initial={editing}
+        onCancel={() => {
+          setShowForm(false)
+          setEditing(null)
+        }}
+        onSave={handleSave}
+      />
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {codes.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 py-10 text-center">
+          <TriangleAlert className="size-8 text-muted-foreground/60" />
+          <p className="text-sm text-muted-foreground">
+            No error codes recorded for this equipment yet.
+          </p>
+          <p className="max-w-[16rem] text-xs text-muted-foreground/80">
+            Add fault codes with explanations, or any other repair help and notes.
+          </p>
+        </div>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {codes.map((c) => (
+            <li key={c.id} className="rounded-xl border border-border bg-card p-3">
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 inline-flex shrink-0 items-center rounded-md bg-warning/20 px-2 py-1 text-xs font-semibold text-warning">
+                  {c.code}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm leading-snug text-foreground">{c.explanation}</p>
+                  {c.note ? (
+                    <p className="mt-1.5 rounded-lg bg-muted p-2 text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">Note: </span>
+                      {c.note}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex shrink-0 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditing(c)
+                      setShowForm(true)
+                    }}
+                    aria-label={`Edit ${c.code}`}
+                    className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <Pencil className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(c.id)}
+                    aria-label={`Delete ${c.code}`}
+                    className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-destructive"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Button
+        variant="outline"
+        onClick={() => {
+          setEditing(null)
+          setShowForm(true)
+        }}
+        className="h-10 w-full rounded-xl"
+      >
+        <Plus className="size-4" />
+        Add error code or repair help
+      </Button>
+    </div>
+  )
+}
+
+function ErrorCodeForm({
+  initial,
+  onCancel,
+  onSave,
+}: {
+  initial: ErrorCode | null
+  onCancel: () => void
+  onSave: (entry: ErrorCode) => void
+}) {
+  const [code, setCode] = useState(initial?.code ?? "")
+  const [explanation, setExplanation] = useState(initial?.explanation ?? "")
+  const [note, setNote] = useState(initial?.note ?? "")
+
+  const canSave = code.trim() && explanation.trim()
+
+  function submit() {
+    if (!canSave) return
+    onSave({
+      id: initial?.id ?? newErrorCodeId(),
+      code: code.trim(),
+      explanation: explanation.trim(),
+      note: note.trim() || undefined,
+    })
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-3">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-foreground">
+          {initial ? "Edit entry" : "New error code / repair help"}
+        </h3>
+        <button
+          type="button"
+          onClick={onCancel}
+          aria-label="Cancel"
+          className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-medium text-foreground">Code / title</span>
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="e.g. E-12 or “No display”"
+            className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/30"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-medium text-foreground">Explanation</span>
+          <textarea
+            value={explanation}
+            onChange={(e) => setExplanation(e.target.value)}
+            placeholder="What it means and how to proceed…"
+            rows={3}
+            className="w-full resize-none rounded-xl border border-border bg-background p-2.5 text-sm text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/30"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-medium text-foreground">
+            Notes <span className="font-normal text-muted-foreground">(optional)</span>
+          </span>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Field notes, parts used, observations…"
+            rows={2}
+            className="w-full resize-none rounded-xl border border-border bg-background p-2.5 text-sm text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/30"
+          />
+        </label>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onCancel} className="h-10 flex-1 rounded-xl">
+            Cancel
+          </Button>
+          <Button onClick={submit} disabled={!canSave} className="h-10 flex-1 rounded-xl">
+            <Save className="size-4" />
+            Save
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
 }

@@ -10,6 +10,16 @@ export interface ChecklistStep {
   no: Branch
 }
 
+export interface ErrorCode {
+  id: string
+  /** The fault/error code, or a short title for a repair tip (e.g. "E-12" or "No display") */
+  code: string
+  /** What the code means / explanation of the repair help */
+  explanation: string
+  /** Free-form technician notes, editable from the equipment view */
+  note?: string
+}
+
 export interface Equipment {
   id: string
   name: string
@@ -18,6 +28,8 @@ export interface Equipment {
   category: string
   subcategory: string
   checklist: ChecklistStep[]
+  /** Optional. Not every equipment has error codes; can also hold repair tips. */
+  errorCodes?: ErrorCode[]
 }
 
 export interface RecordAnswer {
