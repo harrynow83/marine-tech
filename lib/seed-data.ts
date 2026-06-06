@@ -33,6 +33,26 @@ export const SEED_EQUIPMENT: Equipment[] = [
       "Is the output AC voltage within 5% of nominal?",
       "Does the unit hold load without tripping for 2 minutes?",
     ]),
+    errorCodes: [
+      {
+        id: "ec-multiplus-1",
+        code: "Err 1",
+        explanation:
+          "Device temperature too high. Check ventilation and ambient temperature; reduce load and let the unit cool down.",
+      },
+      {
+        id: "ec-multiplus-2",
+        code: "Err 8",
+        explanation:
+          "Inverter overload — connected load exceeds the unit's rated output. Disconnect non-essential loads and restart.",
+      },
+      {
+        id: "ec-multiplus-3",
+        code: "Low battery",
+        explanation:
+          "Battery voltage dropped below the cut-off. Recharge batteries and verify the DC cabling and fuses.",
+      },
+    ],
   },
   {
     id: "eq-mastervolt-combimaster",
