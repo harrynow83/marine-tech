@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ClipboardList,
   FolderClosed,
+  Pencil,
   Play,
 } from "lucide-react"
 
@@ -18,10 +19,12 @@ export function DetailScreen({
   equipment,
   onBack,
   onStart,
+  onEdit,
 }: {
   equipment?: Equipment
   onBack: () => void
   onStart: () => void
+  onEdit: () => void
 }) {
   const { recordsForEquipment } = useStore()
   const [tab, setTab] = useState<"checklist" | "records">("checklist")
@@ -39,7 +42,21 @@ export function DetailScreen({
 
   return (
     <div className="flex flex-1 flex-col pb-28">
-      <TopBar title={equipment.name} subtitle={`${equipment.brand} · ${equipment.type}`} onBack={onBack} />
+      <TopBar
+        title={equipment.name}
+        subtitle={`${equipment.brand} · ${equipment.type}`}
+        onBack={onBack}
+        right={
+          <button
+            type="button"
+            onClick={onEdit}
+            aria-label="Edit equipment"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
+          >
+            <Pencil className="size-[18px]" />
+          </button>
+        }
+      />
 
       <div className="px-4 pt-4">
         <div className="flex flex-wrap items-center gap-2">
@@ -68,19 +85,29 @@ export function DetailScreen({
 
       <div className="p-4">
         {tab === "checklist" ? (
-          <ol className="flex flex-col gap-2">
-            {equipment.checklist.map((step, i) => (
-              <li
-                key={step.id}
-                className="flex gap-3 rounded-xl border border-border bg-card p-3"
-              >
-                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                  {i + 1}
-                </span>
-                <span className="text-sm leading-snug text-foreground">{step.text}</span>
-              </li>
-            ))}
-          </ol>
+          <>
+            <ol className="flex flex-col gap-2">
+              {equipment.checklist.map((step, i) => (
+                <li
+                  key={step.id}
+                  className="flex gap-3 rounded-xl border border-border bg-card p-3"
+                >
+                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                    {i + 1}
+                  </span>
+                  <span className="text-sm leading-snug text-foreground">{step.text}</span>
+                </li>
+              ))}
+            </ol>
+            <Button
+              variant="outline"
+              onClick={onEdit}
+              className="mt-3 h-10 w-full rounded-xl"
+            >
+              <Pencil className="size-4" />
+              Edit diagnostic steps
+            </Button>
+          </>
         ) : (
           <RecordsList equipmentId={equipment.id} />
         )}

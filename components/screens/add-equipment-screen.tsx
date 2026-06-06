@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useStore } from "@/lib/store"
 import type { ChecklistStep, Equipment } from "@/lib/types"
 import { TopBar } from "@/components/ui-bits"
@@ -20,20 +20,45 @@ function newDraftStep(): DraftStep {
   return { id: `s${draftCounter}`, text: "", yes: "ok", no: "escalate" }
 }
 
+const CUSTOM = "__custom__"
+
 export function AddEquipmentScreen({
+  existing,
   onBack,
-  onCreated,
+  onSaved,
 }: {
+  existing?: Equipment
   onBack: () => void
-  onCreated: () => void
+  onSaved: (id: string) => void
 }) {
-  const { addEquipment } = useStore()
-  const [name, setName] = useState("")
-  const [brand, setBrand] = useState("")
-  const [type, setType] = useState("")
-  const [category, setCategory] = useState("")
-  const [subcategory, setSubcategory] = useState("")
-  const [steps, setSteps] = useState<DraftStep[]>([newDraftStep()])
+  const { equipment, addEquipment, updateEquipment } = useStore()
+  const isEdit = Boolean(existing)
+
+  const [name, setName] = useState(existing?.name ?? "")
+  const [brand, setBrand] = useState(existing?.brand ?? "")
+  const [type, setType] = useState(existing?.type ?? "")
+  const [category, setCategory] = useState(existing?.category ?? "")
+  const [subcategory, setSubcategory] = useState(existing?.subcategory ?? "")
+  const [steps, setSteps] = useState<DraftStep[]>(
+    existing && existing.checklist.length > 0
+      ? existing.checklist.map((s) => ({ id: s.id, text: s.text, yes: s.yes, no: s.no }))
+      : [newDraftStep()],
+  )
+
+  // Derive selectable options from existing equipment.
+  const categoryOptions = useMemo(
+    () => Array.from(new Set(equipment.map((e) => e.category))).sort(),
+    [equipment],
+  )
+  const typeOptions = useMemo(
+    () => Array.from(new Set(equipment.map((e) => e.type))).sort(),
+    [equipment],
+  )
+  const subcategoryOptions = useMemo(() => {
+    const inCategory = equipment.filter((e) => !category || e.category === category)
+    const base = inCategory.length > 0 ? inCategory : equipment
+    return Array.from(new Set(base.map((e) => e.subcategory))).sort()
+  }, [equipment, category])
 
   const stepIds = steps.map((s) => s.id)
   const targetOptions = [...stepIds, "ok", "escalate"]
@@ -61,7 +86,7 @@ export function AddEquipmentScreen({
       .map((s) => ({ id: s.id, text: s.text.trim(), yes: s.yes, no: s.no }))
 
     const eq: Equipment = {
-      id: `eq-${Date.now()}`,
+      id: existing?.id ?? `eq-${Date.now()}`,
       name: name.trim(),
       brand: brand.trim(),
       type: type.trim(),
@@ -69,36 +94,45 @@ export function AddEquipmentScreen({
       subcategory: subcategory.trim(),
       checklist,
     }
-    addEquipment(eq)
-    onCreated()
+    if (isEdit) updateEquipment(eq)
+    else addEquipment(eq)
+    onSaved(eq.id)
   }
 
   return (
     <div className="flex flex-1 flex-col pb-28">
-      <TopBar title="Add equipment" onBack={onBack} />
+      <TopBar title={isEdit ? "Edit equipment" : "Add equipment"} onBack={onBack} />
 
       <div className="flex flex-col gap-4 p-4">
         <Field label="Name" value={name} onChange={setName} placeholder="e.g. MultiPlus Inverter" />
         <div className="grid grid-cols-2 gap-3">
           <Field label="Brand" value={brand} onChange={setBrand} placeholder="Victron" />
-          <Field label="Type" value={type} onChange={setType} placeholder="Inverter" />
+          <ComboSelect
+            label="Type"
+            value={type}
+            options={typeOptions}
+            onChange={setType}
+            placeholder="Inverter"
+          />
         </div>
-        <Field
+        <ComboSelect
           label="Category"
           value={category}
+          options={categoryOptions}
           onChange={setCategory}
           placeholder="Inverters & Chargers"
         />
-        <Field
+        <ComboSelect
           label="Subcategory"
           value={subcategory}
+          options={subcategoryOptions}
           onChange={setSubcategory}
           placeholder="Inverter/Chargers"
         />
 
         <div className="mt-2">
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">Checklist steps</h2>
+            <h2 className="text-sm font-semibold text-foreground">Diagnostic steps</h2>
             <span className="text-xs text-muted-foreground">{steps.length} step(s)</span>
           </div>
 
@@ -161,7 +195,7 @@ export function AddEquipmentScreen({
       <div className="fixed inset-x-0 bottom-0 z-20 mx-auto w-full max-w-md border-t border-border bg-background/95 p-4 backdrop-blur">
         <Button onClick={save} disabled={!canSave} className="h-12 w-full rounded-xl text-base">
           <Save className="size-5" />
-          Save equipment
+          {isEdit ? "Save changes" : "Save equipment"}
         </Button>
       </div>
     </div>
@@ -192,6 +226,68 @@ function Field({
   )
 }
 
+/**
+ * A dropdown that lists existing options plus an "Other…" entry that reveals
+ * a free-text input so new categories/types can still be created.
+ */
+function ComboSelect({
+  label,
+  value,
+  options,
+  onChange,
+  placeholder,
+}: {
+  label: string
+  value: string
+  options: string[]
+  onChange: (v: string) => void
+  placeholder?: string
+}) {
+  // Custom mode when the current value isn't one of the known options.
+  const isKnown = value === "" || options.includes(value)
+  const [custom, setCustom] = useState(!isKnown)
+
+  const selectValue = custom ? CUSTOM : value
+
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-sm font-medium text-foreground">{label}</span>
+      <select
+        value={selectValue}
+        onChange={(e) => {
+          const v = e.target.value
+          if (v === CUSTOM) {
+            setCustom(true)
+            onChange("")
+          } else {
+            setCustom(false)
+            onChange(v)
+          }
+        }}
+        className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/30"
+      >
+        <option value="" disabled>
+          Select {label.toLowerCase()}…
+        </option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+        <option value={CUSTOM}>+ Other…</option>
+      </select>
+      {custom ? (
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder ?? `New ${label.toLowerCase()}`}
+          className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/30"
+        />
+      ) : null}
+    </label>
+  )
+}
+
 function BranchSelect({
   label,
   value,
@@ -215,7 +311,7 @@ function BranchSelect({
       >
         {options.map((o) => (
           <option key={o} value={o}>
-            {o === "ok" ? "✓ System OK" : o === "escalate" ? "⚠ Escalate" : `Go to ${o}`}
+            {o === "ok" ? "System OK" : o === "escalate" ? "Escalate" : `Go to ${o}`}
           </option>
         ))}
       </select>

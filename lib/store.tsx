@@ -12,6 +12,7 @@ interface StoreContextValue {
   records: DiagnosticRecord[]
   ready: boolean
   addEquipment: (eq: Equipment) => void
+  updateEquipment: (eq: Equipment) => void
   addRecord: (record: DiagnosticRecord) => void
   recordsForEquipment: (equipmentId: string) => DiagnosticRecord[]
 }
@@ -48,6 +49,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setEquipment((prev) => [eq, ...prev])
   }, [])
 
+  const updateEquipment = useCallback((eq: Equipment) => {
+    setEquipment((prev) => prev.map((e) => (e.id === eq.id ? eq : e)))
+  }, [])
+
   const addRecord = useCallback((record: DiagnosticRecord) => {
     setRecords((prev) => [record, ...prev])
   }, [])
@@ -62,7 +67,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider
-      value={{ equipment, records, ready, addEquipment, addRecord, recordsForEquipment }}
+      value={{ equipment, records, ready, addEquipment, updateEquipment, addRecord, recordsForEquipment }}
     >
       {children}
     </StoreContext.Provider>
