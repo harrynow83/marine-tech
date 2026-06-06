@@ -17,6 +17,7 @@ export type View =
   | { name: "detail"; equipmentId: string }
   | { name: "diagnostic"; equipmentId: string }
   | { name: "add" }
+  | { name: "edit"; equipmentId: string }
 
 export function MarineApp() {
   const { ready, equipment } = useStore()
@@ -25,7 +26,6 @@ export function MarineApp() {
   const view = stack[stack.length - 1]
   const push = (v: View) => setStack((s) => [...s, v])
   const back = () => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s))
-  const goHome = () => setStack([{ name: "home" }])
 
   const findEquipment = (id: string): Equipment | undefined =>
     equipment.find((e) => e.id === id)
@@ -62,6 +62,7 @@ export function MarineApp() {
           equipment={findEquipment(view.equipmentId)}
           onBack={back}
           onStart={() => push({ name: "diagnostic", equipmentId: view.equipmentId })}
+          onEdit={() => push({ name: "edit", equipmentId: view.equipmentId })}
         />
       ) : view.name === "diagnostic" ? (
         <DiagnosticScreen
@@ -70,7 +71,16 @@ export function MarineApp() {
           onDone={() => setStack((s) => s.slice(0, -1))}
         />
       ) : view.name === "add" ? (
-        <AddEquipmentScreen onBack={back} onCreated={goHome} />
+        <AddEquipmentScreen
+          onBack={back}
+          onSaved={(id) => setStack([{ name: "home" }, { name: "detail", equipmentId: id }])}
+        />
+      ) : view.name === "edit" ? (
+        <AddEquipmentScreen
+          existing={findEquipment(view.equipmentId)}
+          onBack={back}
+          onSaved={() => back()}
+        />
       ) : null}
     </div>
   )
